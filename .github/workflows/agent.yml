@@ -1,0 +1,49 @@
+﻿name: AJAN - PATCH UYGULA VE PR AÇ
+
+on:
+  push:
+    branches: [ agent-inbox ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  apply_patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo'yu çek
+        uses: actions/checkout@v4
+
+      - name: Patch dosyası var mı kontrol et
+        run: |
+          if [ ! -f incoming/patch.diff ]; then
+            echo "incoming/patch.diff yok. İşlem yok."
+            exit 0
+          fi
+
+      - name: Patch uygula
+        run: |
+          git config user.name "ajan-bot"
+          git config user.email "ajan-bot@users.noreply.github.com"
+          git checkout -b agent-changes-${GITHUB_RUN_ID}
+          git apply incoming/patch.diff
+
+      - name: Patch dosyasını temizle (tekrar çalışmasın)
+        run: |
+          rm -f incoming/patch.diff
+
+      - name: Commit al ve push et
+        run: |
+          git add -A
+          git commit -m "Patch uygulandı (Actions)"
+          git push origin HEAD
+
+      - name: PR aç
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "Actions: Patch uygulandı"
+          body: "incoming/patch.diff dosyasındaki değişiklikler uygulandı ve bu PR açıldı."
+          base: v1-laravel-core
+          branch: agent-changes-${{ github.run_id }}
